@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ishikawa RCA</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --line: #30363d; --text: #e6edf3; --dim: #8b949e;
+    --idle: #484f58; --active: #d29922; --done: #58a6ff;
+    --root: #f85149; --contrib: #d29922; --refuted: #6e7681; --inconc: #a371f7; --ok: #3fb950;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, "Segoe UI", Inter, sans-serif; }
+  header { display: flex; gap: 12px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 18px; letter-spacing: .3px; }
+  header .tag { color: var(--dim); font-size: 13px; }
+  .spacer { flex: 1; }
+  select, button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; font: inherit; }
+  button.primary { background: #238636; border-color: #2ea043; font-weight: 600; cursor: pointer; }
+  button.primary:disabled { opacity: .5; cursor: wait; }
+  #timer { font: 600 15px ui-monospace, monospace; color: var(--active); min-width: 64px; text-align: right; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; padding: 16px 20px; }
+  @media (max-width: 1000px) { main { grid-template-columns: minmax(0, 1fr); padding: 12px; } #feed { height: 320px; } }
+  section, aside { min-width: 0; }
+  .card { overflow-wrap: anywhere; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h2 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--dim); }
+  #alert { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 16px; }
+  #alert div b { display: block; font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .6px; font-weight: 500; }
+  .sev { color: var(--root); font-weight: 700; }
+  svg { width: 100%; height: auto; display: block; }
+  .bone line { stroke: var(--idle); stroke-width: 4; stroke-linecap: round; transition: stroke .4s, stroke-width .4s; }
+  .bone text.cat { fill: var(--dim); font: 700 15px ui-monospace, monospace; letter-spacing: 1px; }
+  .bone text.status { fill: var(--dim); font: 12px ui-monospace, monospace; }
+  .bone text.cause { font: 12.5px -apple-system, sans-serif; fill: var(--text); }
+  .bone { cursor: pointer; }
+  .bone.active line { stroke: var(--active); animation: pulse 1s infinite; }
+  .bone.done line { stroke: var(--done); }
+  .bone.v-root_cause line { stroke: var(--root); stroke-width: 7; }
+  .bone.v-contributing line { stroke: var(--contrib); }
+  .bone.v-refuted line { stroke: var(--refuted); stroke-dasharray: 8 6; }
+  .bone.v-inconclusive line { stroke: var(--inconc); }
+  .bone.v-root_cause text.cat { fill: var(--root); }
+  .bone.v-refuted text.cause { fill: var(--dim); text-decoration: line-through; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  #spine { stroke: var(--text); stroke-width: 5; }
+  #head rect { fill: #21262d; stroke: var(--root); stroke-width: 2.5; }
+  #head text { fill: var(--text); font: 600 13px -apple-system, sans-serif; }
+  #stages { display: flex; gap: 6px; margin: 12px 0 0; flex-wrap: wrap; }
+  .chip { font: 12px ui-monospace, monospace; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--line); color: var(--dim); }
+  .chip.active { color: var(--active); border-color: var(--active); }
+  .chip.done { color: var(--ok); border-color: var(--ok); }
+  #feed { height: 560px; overflow: auto; font: 12px/1.55 ui-monospace, monospace; }
+  #feed .tool { color: var(--dim); }
+  #feed .tool b { color: var(--done); font-weight: 500; }
+  #feed .find { margin: 8px 0; padding: 8px 10px; border-left: 3px solid var(--done); background: #0d1117; white-space: pre-wrap; font-family: -apple-system, sans-serif; font-size: 12.5px; }
+  #feed .find.skeptic { border-color: var(--inconc); }
+  #feed .err { color: var(--root); }
+  #report { margin-top: 16px; display: none; }
+  #report .rc { font-size: 17px; font-weight: 600; border-left: 4px solid var(--root); padding: 4px 12px; margin: 4px 0 12px; }
+  .fix { display: flex; gap: 8px; align-items: center; background: #0d1117; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font: 13px ui-monospace, monospace; color: var(--ok); }
+  .fix code { flex: 1; overflow-x: auto; white-space: nowrap; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 14px; }
+  ol, ul { margin: 4px 0; padding-left: 20px; }
+  li { margin: 3px 0; }
+  .verdicts { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+  .verdicts td:nth-child(1) { width: 110px; } .verdicts td:nth-child(2) { width: 100px; } .verdicts td:nth-child(4) { width: 50px; }
+  .verdicts td { border-top: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+  .pill { font: 600 11px ui-monospace, monospace; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+  .p-root_cause { background: #3d1214; color: var(--root); } .p-contributing { background: #3a2a0b; color: var(--contrib); }
+  .p-refuted { background: #21262d; color: var(--refuted); } .p-inconclusive { background: #271a3d; color: var(--inconc); }
+  #detail { margin-top: 16px; display: none; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🐟 Ishikawa</h1><span class="tag">fishbone root-cause analysis for cloud incidents · Google ADK + Gemini</span>
+  <span class="spacer"></span>
+  <select id="incident"></select>
+  <button class="primary" id="go">Investigate</button>
+  <span id="timer">0.0s</span>
+</header>
+<main>
+  <section>
+    <div class="card" id="alert"></div>
+    <div class="card">
+      <h2>Fishbone</h2>
+      <svg id="fish" viewBox="0 0 1000 470" role="img" aria-label="Ishikawa fishbone diagram"></svg>
+      <div id="stages"></div>
+    </div>
+    <div class="card" id="detail"></div>
+    <div class="card" id="report"></div>
+  </section>
+  <aside class="card"><h2>Agent activity</h2><div id="feed"></div></aside>
+</main>
+<script>
+const CATS = ["code", "config", "infrastructure", "dependencies", "data", "traffic"];
+const STAGES = ["triage", "investigators", "skeptic", "scribe"];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+const findings = {};
+let t0 = 0, tick = null;
+
+// --- fishbone geometry: spine y=235, head at right, 3 bones above, 3 below ---
+const SPINE_Y = 235, XS = [250, 480, 710];
+function drawFish() {
+  const svg = $("fish");
+  let h = `<line id="spine" x1="40" y1="${SPINE_Y}" x2="800" y2="${SPINE_Y}"/>`;
+  h += `<polygon points="20,${SPINE_Y - 40} 60,${SPINE_Y} 20,${SPINE_Y + 40}" fill="none" stroke="var(--text)" stroke-width="4"/>`;
+  CATS.forEach((cat, i) => {
+    const top = i < 3, x = XS[i % 3], y2 = top ? 45 : 425, x1 = x - 120;
+    const ty = top ? y2 - 12 : y2 + 24;
+    h += `<g class="bone" id="bone-${cat}" data-cat="${cat}">
+      <line x1="${x1}" y1="${y2}" x2="${x}" y2="${SPINE_Y}"/>
+      <text class="cat" x="${x1 - 10}" y="${ty}">${cat.toUpperCase()}</text>
+      <text class="status" id="st-${cat}" x="${x1 - 10}" y="${top ? ty + 18 : ty - 40}"></text>
+      <g id="causes-${cat}"></g></g>`;
+  });
+  h += `<g id="head"><rect x="805" y="${SPINE_Y - 60}" width="185" height="120" rx="10"/>
+        <foreignObject x="812" y="${SPINE_Y - 54}" width="171" height="108">
+        <div xmlns="http://www.w3.org/1999/xhtml" id="effect" style="color:var(--text);font:600 13px -apple-system,sans-serif;display:flex;align-items:center;height:100%;text-align:center;justify-content:center"></div>
+        </foreignObject></g>`;
+  svg.innerHTML = h;
+  document.querySelectorAll(".bone").forEach((g) => g.onclick = () => showDetail(g.dataset.cat));
+  $("stages").innerHTML = STAGES.map((s) => `<span class="chip" id="chip-${s}">${s}</span>`).join("");
+}
+
+function setBone(cat, cls, status) {
+  const g = $("bone-" + cat);
+  g.classList.remove("active", "done");
+  if (cls) g.classList.add(cls);
+  if (status !== undefined) $("st-" + cat).textContent = status;
+}
+function chip(stage, cls) {
+  const c = $("chip-" + stage); c.classList.remove("active", "done"); c.classList.add(cls);
+}
+function feed(html) { const f = $("feed"); f.insertAdjacentHTML("beforeend", html); f.scrollTop = f.scrollHeight; }
+function showDetail(cat) {
+  if (!findings[cat]) return;
+  const d = $("detail"); d.style.display = "block";
+  d.innerHTML = `<h2>${cat} investigator</h2>${md(findings[cat])}`;
+}
+
+async function loadIncidents() {
+  const list = await (await fetch("/api/incidents")).json();
+  $("incident").innerHTML = list.map((i) => `<option value="${i.id}">${esc(i.title)}</option>`).join("");
+  showAlert();
+}
+async function showAlert() {
+  const inc = await (await fetch("/api/incidents/" + $("incident").value)).json();
+  const a = inc.alert;
+  $("alert").innerHTML = [["Service", a.service], ["Platform", a.platform], ["Policy", a.policy],
+    ["Observed", a.observed], ["Fired", a.fired_at.replace("T", " ").replace("Z", " UTC")]]
+    .map(([k, v]) => `<div><b>${k}</b>${esc(v)}</div>`).join("") + `<div><b>Severity</b><span class="sev">${a.severity}</span></div>`;
+  drawFish();
+  $("effect").textContent = a.observed.split(";")[0];
+  for (const k in findings) delete findings[k];
+  $("feed").innerHTML = ""; $("report").style.display = "none"; $("detail").style.display = "none";
+}
+
+function wrap(text, n) {
+  const words = text.split(" "), lines = [""];
+  for (const w of words) { if ((lines.at(-1) + " " + w).length > n) lines.push(w); else lines[lines.length - 1] += (lines.at(-1) ? " " : "") + w; }
+  return lines.slice(0, 2);
+}
+
+function applyReport(r) {
+  const order = {root_cause: 0, contributing: 1, inconclusive: 2, refuted: 3};
+  CATS.forEach((cat, i) => {
+    const causes = r.causes.filter((c) => c.category === cat).sort((a, b) => order[a.verdict] - order[b.verdict]);
+    const g = $("bone-" + cat);
+    const best = causes[0]?.verdict || "refuted";
+    g.classList.remove("active", "done"); g.classList.add("v-" + best);
+    $("st-" + cat).textContent = best.replace("_", " ");
+    const top = i < 3, x = XS[i % 3];
+    let h = "";
+    causes.slice(0, 2).forEach((c, k) => {
+      const yy = top ? 95 + k * 52 : 300 + k * 52;
+      const xx = x - 120 * (Math.abs(SPINE_Y - yy) / (SPINE_Y - 45)) + 8;
+      wrap(c.description, 30).forEach((ln, j) => h += `<text class="cause" x="${xx}" y="${yy + j * 15}">${j ? "" : "• "}${esc(ln)}</text>`);
+    });
+    $("causes-" + cat).innerHTML = h;
+  });
+  $("effect").textContent = r.effect;
+  const rows = r.causes.slice().sort((a, b) => order[a.verdict] - order[b.verdict]).map((c) =>
+    `<tr><td><span class="pill p-${c.verdict}">${c.verdict.replace("_", " ")}</span></td><td>${c.category}</td>
+     <td>${esc(c.description)}<br><span style="color:var(--dim)">${c.evidence.map(esc).join(" · ")}</span></td><td>${Math.round(c.confidence * 100)}%</td></tr>`).join("");
+  const rep = $("report"); rep.style.display = "block";
+  rep.innerHTML = `<h2>Root cause</h2><div class="rc">${esc(r.root_cause)}</div>
+    <div class="fix"><span>$</span><code id="fixcmd">${esc(r.immediate_fix)}</code><button onclick="navigator.clipboard.writeText($('fixcmd').textContent)">Copy</button></div>
+    <div class="grid3">
+      <div><h2>5 Whys</h2><ol>${r.five_whys.map((w) => `<li>${esc(w)}</li>`).join("")}</ol></div>
+      <div><h2>Corrective</h2><ul>${r.corrective_actions.map((w) => `<li>${esc(w)}</li>`).join("")}</ul></div>
+      <div><h2>Preventive</h2><ul>${r.preventive_actions.map((w) => `<li>${esc(w)}</li>`).join("")}</ul></div>
+    </div>
+    <table class="verdicts">${rows}</table>
+    <p><button id="dl">Download RCA.md</button> <span style="color:var(--dim)">Culprit: <code>${esc(r.culprit)}</code></span></p>`;
+  $("dl").onclick = async () => {
+    const text = await (await fetch("/api/markdown", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(r)})).text();
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], {type: "text/markdown"}));
+    a.download = `rca-${$("incident").value}.md`; a.click();
+  };
+}
+
+function start() {
+  if ($("go").disabled) return;
+  $("go").disabled = true;
+  showAlert().then(() => {
+    t0 = performance.now();
+    tick = setInterval(() => $("timer").textContent = ((performance.now() - t0) / 1000).toFixed(1) + "s", 100);
+    chip("triage", "active");
+    const es = new EventSource("/api/investigate/" + $("incident").value);
+    const stop = () => { es.close(); clearInterval(tick); $("go").disabled = false; };
+    es.onmessage = (m) => {
+      const ev = JSON.parse(m.data);
+      if (ev.type === "tool_call") {
+        feed(`<div class="tool">[${ev.stage}] → <b>${esc(ev.tool)}</b>(${esc(Object.values(ev.args).join(", "))})</div>`);
+        if (CATS.includes(ev.stage)) setBone(ev.stage, "active", "→ " + ev.tool);
+        if (ev.stage === "skeptic") chip("skeptic", "active");
+      } else if (ev.type === "finding") {
+        findings[ev.stage] = ev.text;
+        feed(`<div class="find ${ev.stage}"><b>${ev.stage.toUpperCase()}</b> <span style="color:var(--dim)">t+${ev.t}s</span>\n${md(ev.text)}</div>`);
+        if (ev.stage === "triage") { chip("triage", "done"); chip("investigators", "active"); CATS.forEach((c) => setBone(c, "active", "investigating…")); }
+        if (CATS.includes(ev.stage)) {
+          setBone(ev.stage, "done", "reported ✓");
+          if (CATS.every((c) => findings[c])) { chip("investigators", "done"); chip("skeptic", "active"); }
+        }
+        if (ev.stage === "skeptic") { chip("skeptic", "done"); chip("scribe", "active"); }
+      } else if (ev.type === "report") {
+        chip("scribe", "done"); applyReport(ev.report);
+      } else if (ev.type === "error") {
+        feed(`<div class="err">${esc(ev.message)}</div>`); stop();
+      } else if (ev.type === "done") {
+        $("timer").textContent = ev.elapsed_s + "s"; stop();
+      }
+    };
+    es.onerror = () => stop();
+  });
+}
+$("go").onclick = start;
+$("incident").onchange = showAlert;
+loadIncidents();
+</script>
+</body>
+</html>
