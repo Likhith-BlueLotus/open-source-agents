@@ -308,6 +308,9 @@ Manual end-to-end check (needs a key): `python -m ishikawa --incident checkout-l
 - Replays shorten idle gaps longer than 4 s, so replayed runs can look faster than live ones; the metrics shown are the recorded live values.
 - ADK 2.x marks `SequentialAgent` / `ParallelAgent` as deprecated in favour of `Workflow`; they still work, and we will migrate when `Workflow` supports this composition.
 - Single incident per run; no persistence of past incidents yet.
+- **Model**: the default `gemini-3-flash-preview` is a preview model. Set `ISHIKAWA_MODEL` to any Gemini model with function calling (e.g. `gemini-2.5-flash`); both thinking styles (levels and token budgets) are handled.
+- **Grounding** matches concrete tokens (shas, numbers, constants) in each evidence line against what the tools returned. It catches invented values, not paraphrased claims, which is why output checks and human approval stay in place.
+- **Dependencies** are pinned to the exact versions verified on a clean Python 3.11 install (`requirements.txt`).
 
 ---
 
