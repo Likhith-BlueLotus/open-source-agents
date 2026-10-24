@@ -1,0 +1,18 @@
+graph TD
+  EV["Untrusted evidence<br/>logs · commits · metrics · config · deps · DB · traffic"]
+  IG["🛡 Input guardrails<br/>redact secrets/PII · quarantine injection · tool budgets"]
+  TR["Triage agent"]
+  FB["Fishbone · ParallelAgent<br/>code · config · infra · deps · data · traffic"]
+  SK["Skeptic agent<br/>timing · counterfactual · mechanism"]
+  SC["Scribe agent<br/>RCAReport schema"]
+  OG["🛡 Output guardrails<br/>fix allowlist + rollback · grounding · confidence"]
+  HU{"Human approval"}
+  OUT["Live fishbone UI · CLI · postmortem · evals"]
+  EV --> IG
+  IG -->|clean evidence| TR
+  TR -->|brief| FB
+  FB -->|hypotheses| SK
+  SK -->|verdicts| SC
+  SC --> OG
+  OG -->|ready / needs review| HU
+  HU --> OUT
