@@ -96,7 +96,7 @@ def test_hallucinated_evidence_fails_grounding_and_needs_review():
 
 def test_server_blocks_cross_site_and_hides_errors():
     client = TestClient(app)
-    r = client.get("/api/investigate/checkout-latency", headers={"Sec-Fetch-Site": "cross-site"})
+    r = client.get("/api/investigate/checkout-latency?mode=live", headers={"Sec-Fetch-Site": "cross-site"})
     assert r.status_code == 403
     assert client.get("/api/incidents/../../etc/passwd").status_code == 404
 
