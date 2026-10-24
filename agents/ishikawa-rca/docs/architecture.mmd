@@ -1,18 +1,23 @@
-graph TD
-  EV["Untrusted evidence<br/>logs · commits · metrics · config · deps · DB · traffic"]
-  IG["🛡 Input guardrails<br/>redact secrets/PII · quarantine injection · tool budgets"]
-  TR["Triage agent"]
-  FB["Fishbone · ParallelAgent<br/>code · config · infra · deps · data · traffic"]
-  SK["Skeptic agent<br/>timing · counterfactual · mechanism"]
-  SC["Scribe agent<br/>RCAReport schema"]
-  OG["🛡 Output guardrails<br/>fix allowlist + rollback · grounding · confidence"]
-  HU{"Human approval"}
-  OUT["Live fishbone UI · CLI · postmortem · evals"]
-  EV --> IG
-  IG -->|clean evidence| TR
-  TR -->|brief| FB
-  FB -->|hypotheses| SK
-  SK -->|verdicts| SC
-  SC --> OG
-  OG -->|ready / needs review| HU
-  HU --> OUT
+flowchart LR
+  subgraph IN["① Untrusted evidence in"]
+    direction TB
+    EV["Logs · commits · diffs<br/>metrics · config · deps"]
+    IG["🛡 Input guardrails<br/>redact secrets & PII<br/>quarantine injection<br/>per-agent tool budgets"]
+    EV --> IG
+  end
+  subgraph AG["② Agents · Gemini via Google ADK"]
+    direction TB
+    TR["Triage"]
+    FB["Fishbone · ParallelAgent<br/>code · config · infra<br/>deps · data · traffic"]
+    SK["Skeptic<br/>timing · counterfactual · mechanism"]
+    SC["Scribe<br/>RCAReport schema"]
+    TR --> FB --> SK --> SC
+  end
+  subgraph OUT["③ Verified decision out"]
+    direction TB
+    OG["🛡 Output guardrails<br/>fix allowlist + rollback<br/>evidence grounding<br/>confidence gates"]
+    HU{"Human<br/>approval"}
+    UI["Live UI · CLI · MCP<br/>postmortem · audit trail"]
+    OG --> HU --> UI
+  end
+  IN ==> AG ==> OUT

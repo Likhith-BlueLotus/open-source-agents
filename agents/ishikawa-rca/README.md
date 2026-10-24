@@ -54,9 +54,35 @@
 
 ## Architecture & Data Flow
 
-<img src="docs/architecture.png" alt="Ishikawa architecture: untrusted evidence, input guardrails, triage, parallel fishbone, skeptic, scribe, output guardrails, human approval" width="420" align="right">
+```mermaid
+flowchart LR
+  subgraph IN["① Untrusted evidence in"]
+    direction TB
+    EV["Logs · commits · diffs<br/>metrics · config · deps"]
+    IG["🛡 Input guardrails<br/>redact secrets & PII<br/>quarantine injection<br/>per-agent tool budgets"]
+    EV --> IG
+  end
+  subgraph AG["② Agents · Gemini via Google ADK"]
+    direction TB
+    TR["Triage"]
+    FB["Fishbone · ParallelAgent<br/>code · config · infra<br/>deps · data · traffic"]
+    SK["Skeptic<br/>timing · counterfactual · mechanism"]
+    SC["Scribe<br/>RCAReport schema"]
+    TR --> FB --> SK --> SC
+  end
+  subgraph OUT["③ Verified decision out"]
+    direction TB
+    OG["🛡 Output guardrails<br/>fix allowlist + rollback<br/>evidence grounding<br/>confidence gates"]
+    HU{"Human<br/>approval"}
+    UI["Live UI · CLI · MCP<br/>postmortem · audit trail"]
+    OG --> HU --> UI
+  end
+  IN ==> AG ==> OUT
+```
 
-Editable source: [`docs/architecture.mmd`](docs/architecture.mmd) (Mermaid) and [`docs/architecture.excalidraw`](docs/architecture.excalidraw).
+Source: [`docs/architecture.mmd`](docs/architecture.mmd) · editable [`docs/architecture.excalidraw`](docs/architecture.excalidraw) · image [`docs/architecture.png`](docs/architecture.png)
+
+<details><summary>Detailed data flow (text)</summary>
 
 ```
                         ┌───────────────────────────── session state ─────────────────────────────┐
@@ -86,6 +112,8 @@ Editable source: [`docs/architecture.mmd`](docs/architecture.mmd) (Mermaid) and 
  Every tool call ─▶ before_tool_callback: per-agent budget
  Every tool result ─▶ after_tool_callback: redact secrets/PII ─▶ quarantine injected instructions ─▶ model
 ```
+
+</details>
 
 Design choices:
 - **Tool scoping per bone** keeps each investigator focused and prevents six agents from producing six copies of the same answer.
